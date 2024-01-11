@@ -297,22 +297,37 @@ class LineSampling():
     def setOppositeDirection(self,oppositeDirection):
         self._oppositeDirection = self._checkOppositeDirection(oppositeDirection)
         
-    def _evaluatePf(self,roots,originValue,event):
+    def _evaluatePf(self,roots,event):
         if None in roots or len(roots) == 0:
-            if event.getOperator()(originValue,event.getThreshold()):
-                Pf = 1.
-            else:
-                Pf = 0.
+            Pf = 0.
         else:
-            roots_pos = np.sort([i for i in roots if i >= 0])
-            roots_neg = np.sort([i for i in roots if i < 0])
-            if event.getOperator()(originValue,event.getThreshold()):
-                Pf_pos = 1-sum([(-1)**-k*ot.Normal().computeCDF(-roots_pos[k]) for k in range(len(roots_pos))])
-                Pf_neg = 1-sum([(-1)**k*ot.Normal().computeCDF(-roots_neg[-1-k]) for k in range(len(roots_neg))])
+            roots_pos_temp = np.sort([i for i in roots if i >= 0])
+            roots_pos = []
+            for i in roots_pos_temp:
+                if i not in roots_pos:
+                    roots_pos.append(i)
+            roots_neg_temp = np.sort([i for i in roots if i <= 0])
+            roots_neg = []
+            for i in roots_neg_temp:
+                if i not in roots_neg:
+                    roots_neg.append(i)
+            if 0 in roots:
+                if roots != [0]*len(roots):
+                    if list(roots_pos) != [0]:
+                        Pf_pos = sum([(-1)**-k*ot.Normal().computeCDF(-abs(roots_pos[k])) for k in range(len(roots_pos))])
+                    else:
+                        Pf_pos = 1
+                    if list(roots_neg) != [0]:
+                        Pf_neg = sum([(-1)**k*ot.Normal().computeCDF(-abs(roots_neg[-1-k])) for k in range(len(roots_neg))])
+                    else:
+                        Pf_neg = 1
+                    Pf = 1-Pf_pos+Pf_neg
+                else:
+                    Pf = 1
             else:
                 Pf_pos = sum([(-1)**-k*ot.Normal().computeCDF(-abs(roots_pos[k])) for k in range(len(roots_pos))])
                 Pf_neg = sum([(-1)**k*ot.Normal().computeCDF(-abs(roots_neg[-1-k])) for k in range(len(roots_neg))])
-            Pf = Pf_pos+Pf_neg
+                Pf = Pf_pos+Pf_neg
         return Pf
     
         
@@ -336,8 +351,7 @@ class LineSampling():
                 roots_opposite = [-i for i in roots_opposite]
                 roots+=roots_opposite
                 functionCalls += len(pythonFunc_opp.getInputHistory())
-            originValue = self._rootSolver.getOriginValue()
-            if self._activeLS:
+            if self._activeLS and len(roots)>0:
                 uCandidate = [self._currentLine[i]+roots[0]*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]
                 if np.linalg.norm(uCandidate)<np.linalg.norm(self._ustar[-1]):
                     self._ustar.append(uCandidate)
@@ -346,8 +360,7 @@ class LineSampling():
             missedRoot = True
             roots = [None]
             functionCalls = len(pythonFunc.getInputHistory())
-            originValue = 1.
-        return [roots,originValue,functionCalls,missedRoot]
+        return [roots,functionCalls,missedRoot]
         
     def run(self,reset=False):
         """Sample lines and find corresponding roots."""
@@ -376,10 +389,10 @@ class LineSampling():
         while self._solvedLines < self._maximumLines and self._CoV[-1] > self._minCoV:
             res = [self._find_roots(lines[self._solvedLines],i) for i in range(len(self._eventCollection))]
             self._roots.append([i[0] for i in res])
-            self._totalFunctionCalls.append([i[2] for i in res])
-            self._missedRoots.append([i[3] for i in res])
+            self._totalFunctionCalls.append([i[1] for i in res])
+            self._missedRoots.append([i[2] for i in res])
             self._solvedLines += self._batchSize
-            self._linePf.append([self._evaluatePf(list(self._roots[-1][i]),res[i][1],self._eventCollection[i]) for i in range(len(self._eventCollection))])
+            self._linePf.append([self._evaluatePf(list(self._roots[-1][i]),self._eventCollection[i]) for i in range(len(self._eventCollection))])
             self._pf.append([np.mean(np.array(self._linePf)[:,i]) for i in range(len(self._eventCollection))])
             if len(self._eventCollection) == 1 and self._pf[-1][0]>0:
                 if len(self._pf) > 1:

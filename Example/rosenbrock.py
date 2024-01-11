@@ -44,32 +44,32 @@ print("Pf=", probability)
 #########################################################
 
 ##### Line Sampling ####################################
-LS = LineSampling(event,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-5,1e-5,1e-8,10)),oppositeDirection = False, activeLS = True,
-             minCoV = 0.05, maxLines=3000, batchSize=1, fixedSeed=True)
-LS.run()
-LS_result = LS.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
-LS_CoV = LS_result['CoV']
+# LS = LineSampling(event,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,10)),oppositeDirection = False, activeLS = True,
+#              minCoV = 0.05, maxLines=3000, batchSize=1, fixedSeed=True)
+# LS.run()
+# LS_result = LS.getResults()
+# LS_Probability = LS_result['Pf_MarginalEvent']
+# LS_CoV = LS_result['CoV']
 
-print("LS Probability = ", LS_Probability[-1])
-print("LS CoV = ", LS_CoV[-1])
-print("Number of line searches = ", len(LS_Probability))
+# print("LS Probability = ", LS_Probability[-1])
+# print("LS CoV = ", LS_CoV[-1])
+# print("Number of line searches = ", len(LS_Probability))
 
-##### Line Sampling ####################################
-LS_med = LineSampling(event,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-5,1e-5,1e-8,10),3,0.1),oppositeDirection = False, activeLS = True,
-             minCoV = 0.05, maxLines=3000, batchSize=1, fixedSeed=True)
-LS_med.run()
-LS_result = LS_med.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
-LS_CoV = LS_result['CoV']
+# ##### Line Sampling ####################################
+# LS_med = LineSampling(event,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-5,1e-5,1e-8,10),3,0.1),oppositeDirection = False, activeLS = True,
+#              minCoV = 0.05, maxLines=3000, batchSize=1, fixedSeed=True)
+# LS_med.run()
+# LS_result = LS_med.getResults()
+# LS_Probability = LS_result['Pf_MarginalEvent']
+# LS_CoV = LS_result['CoV']
 
-print("LS Probability = ", LS_Probability[-1])
-print("LS CoV = ", LS_CoV[-1])
-print("Number of line searches = ", len(LS_Probability))
+# print("LS Probability = ", LS_Probability[-1])
+# print("LS CoV = ", LS_CoV[-1])
+# print("Number of line searches = ", len(LS_Probability))
 
-##### Line Sampling ####################################
-LS_safe = LineSampling(event,alpha, rootSolver=ot.SafeAndSlow(ot.Brent(1e-5,1e-5,1e-8,10),3,0.1),oppositeDirection = False, activeLS = True,
-             minCoV = 0.05, maxLines=3000, batchSize=1, fixedSeed=True)
+# ##### Line Sampling ####################################
+LS_safe = LineSampling(event,alpha, rootSolver=ot.SafeAndSlow(ot.Brent(1e-3,1e-3,1e-3,5),3,0.1),oppositeDirection = False, activeLS = True,
+              minCoV = 0.05, maxLines=3000, batchSize=1, fixedSeed=True)
 LS_safe.run()
 LS_result = LS_safe.getResults()
 LS_Probability = LS_result['Pf_MarginalEvent']
