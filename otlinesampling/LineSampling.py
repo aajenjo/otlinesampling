@@ -29,8 +29,18 @@ class LineSampling():
     >>> 
     >>> 
     """
-    def __init__(self,event,alpha,rootSolver=ot.MediumSafe(ot.Brent(1e-5,1e-5,1e-8,10)),oppositeDirection = False, activeLS = False,
-                 minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True):
+    def __init__(
+            self,
+            event,
+            alpha,
+            rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5),8,1),
+            oppositeDirection = False,
+            activeLS = True,
+            minCoV = 0.05,
+            maxLines=1000,
+            batchSize=1,
+            fixedSeed=True,
+    ):
         self._isIntersection = True
         self._eventCollection = self._checkEvent(event)
         self._dim = self._eventCollection[0].getAntecedent().getDimension()
@@ -52,6 +62,7 @@ class LineSampling():
         self._seed = self.setSeed()
         self._solvedLines = 0
         self._linePf = []
+        self._rootPoints = []
         
 
     def _checkDomainEvent(self,domainEvent):
@@ -351,26 +362,27 @@ class LineSampling():
                 roots_opposite = [-i for i in roots_opposite]
                 roots+=roots_opposite
                 functionCalls += len(pythonFunc_opp.getInputHistory())
-            if self._activeLS and len(roots)>0:
-                uCandidate = [self._currentLine[i]+roots[0]*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]
-                if np.linalg.norm(uCandidate)<np.linalg.norm(self._ustar[-1]):
+            if self._activeLS and len(roots) > 0:
+                uCandidate = [self._currentLine[i] + roots[0]*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]
+                if np.linalg.norm(uCandidate) < np.linalg.norm(self._ustar[-1]):
                     self._ustar.append(uCandidate)
-                    self._alpha.append([i/np.linalg.norm(self._ustar[-1]) for i in self._ustar[-1]])
+                    self._alpha.append([i / np.linalg.norm(self._ustar[-1]) for i in self._ustar[-1]])
         except:
             missedRoot = True
             roots = [None]
             functionCalls = len(pythonFunc.getInputHistory())
-        return [roots,functionCalls,missedRoot]
+        root_points = [[self._currentLine[i]+self._sign*j*self._alpha[-1][i] for i in range(len(self._alpha[-1]))] for j in roots]
+        return [roots,functionCalls,missedRoot,root_points]
         
     def run(self,reset=False):
         """Sample lines and find corresponding roots."""
         if self._activeLS:
             self._activeLS = False
             try:
-                roots = self._find_roots([0.]*self._dim,0)[0][0]
+                roots = self._find_roots([0.] * self._dim,0)[0][0]
                 self._ustar = [[roots*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]]
             except:
-                self._ustar = [[1000]*self._dim]
+                self._ustar = [[1000] * self._dim]
                 #print("WARNING: No root was found along the line of direction alpha passing through the center of the space, activeLS is set to False")
             self._activeLS = True
         
@@ -382,6 +394,7 @@ class LineSampling():
             self._linePf = []
             self._CoV = [1000]
             self._roots = []
+            self._rootPoints = []
             self._missedRoots = []
             self._pf = []
             self._totalFunctionCalls = []
@@ -389,6 +402,7 @@ class LineSampling():
         while self._solvedLines < self._maximumLines and self._CoV[-1] > self._minCoV:
             res = [self._find_roots(lines[self._solvedLines],i) for i in range(len(self._eventCollection))]
             self._roots.append([i[0] for i in res])
+            self._rootPoints.append([i[-1] for i in res])
             self._totalFunctionCalls.append([i[1] for i in res])
             self._missedRoots.append([i[2] for i in res])
             self._solvedLines += self._batchSize
@@ -396,7 +410,7 @@ class LineSampling():
             self._pf.append([np.mean(np.array(self._linePf)[:,i]) for i in range(len(self._eventCollection))])
             if len(self._eventCollection) == 1 and self._pf[-1][0]>0:
                 if len(self._pf) > 1:
-                    Var = 1/(len(self._pf)*(len(self._pf)-1))*sum([(i[0]-self._pf[-1][0])**2 for i in self._linePf])
+                    Var = 1 / (len(self._pf)*(len(self._pf)-1)) * sum([(i[0]-self._pf[-1][0])**2 for i in self._linePf])
                     self._CoV.append(np.sqrt(Var)/self._pf[-1])
             if length_alpha < len(self._alpha):
                 lines = self._sampleLines(self._maximumLines)
@@ -404,8 +418,9 @@ class LineSampling():
         
     def getResults(self):
         if len(self._eventCollection) == 1:
-            dico = {'Pf_MarginalEvent': self._pf, 'CoV': self._CoV, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'missedRoots': self._missedRoots}
+            dico = {'Pf_MarginalEvent': self._pf, 'CoV': self._CoV, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'rootPoints': self._rootPoints, 'missedRoots': self._missedRoots}
         else:
-            dico = {'Pf_MarginalEvent': self._pf, 'CoV': None, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'missedRoots': self._missedRoots}
+            print("WARNING: each given failure probability is linked to its corresponding marginal event, it does not correspond to the failure probability of the system event.")
+            dico = {'Pf_MarginalEvent': self._pf, 'CoV': None, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'rootPoints': self._rootPoints, 'missedRoots': self._missedRoots}
         return dico
     

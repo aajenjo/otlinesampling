@@ -7,36 +7,50 @@ Created on Fri Jan  5 11:01:15 2024
 """
 
 import openturns as ot
-import numpy as np
-import math
 from openturns.usecases import stressed_beam
-from classLineSampling import LineSampling
+from LineSampling import LineSampling
 
 
 ################## stressed_beam MC #######################   
 
 sm = stressed_beam.AxialStressedBeam()
-distribution = sm.distribution
-model = sm.model
-vect = ot.RandomVector(distribution)
-G = ot.CompositeRandomVector(model, vect)
-event = ot.ThresholdEvent(G, ot.Less(), -500000)
-optimAlgo = ot.Cobyla()
-optimAlgo.setMaximumEvaluationNumber(1000)
-optimAlgo.setMaximumAbsoluteError(1.0e-10)
-optimAlgo.setMaximumRelativeError(1.0e-10)
-optimAlgo.setMaximumResidualError(1.0e-10)
-optimAlgo.setMaximumConstraintError(1.0e-10)
-algo = ot.FORM(optimAlgo, event, distribution.getMean())
+limitStateFunction = sm.model
+R_dist = sm.distribution_R
+F_dist = sm.distribution_F
+myDistribution = sm.distribution
+inputRandomVector = ot.RandomVector(myDistribution)
+outputRandomVector = ot.CompositeRandomVector(limitStateFunction, inputRandomVector)
+myEvent = ot.ThresholdEvent(outputRandomVector, ot.Less(), -0)
+myCobyla = ot.Cobyla()
+algoFORM = ot.FORM(myCobyla, myEvent, myDistribution.getMean())
+algoFORM.run()
+resultFORM = algoFORM.getResult()
+alpha=resultFORM.getStandardSpaceDesignPoint()
+
+standardSpaceDesignPoint = resultFORM.getStandardSpaceDesignPoint()
+dimension = myDistribution.getDimension()
+myImportance = ot.Normal(dimension)
+myImportance.setMean(standardSpaceDesignPoint)
+experiment = ot.ImportanceSamplingExperiment(myImportance)
+standardEvent = ot.StandardEvent(myEvent)
+algo = ot.ProbabilitySimulationAlgorithm(standardEvent, experiment)
+algo.setMaximumCoefficientOfVariation(0.01)
+algo.setMaximumOuterSampling(100000)
 algo.run()
 result = algo.getResult()
-alpha=result.getStandardSpaceDesignPoint()
-experiment = ot.MonteCarloExperiment()
-algo = ot.ProbabilitySimulationAlgorithm(event, experiment)
-algo.setMaximumCoefficientOfVariation(0.05)
-algo.setMaximumOuterSampling(int(1e6))
-algo.run()
-result = algo.getResult()
-probability = result.getProbabilityEstimate()
-print("Pf=", probability)
-#########################################   
+probabilityFORMIS = result.getProbabilityEstimate()
+print("IS Probability = ", probabilityFORMIS)
+
+#########################################
+
+##### Line Sampling ####################################
+LS = LineSampling(myEvent,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = True,
+             minCoV = 0.01, maxLines=1000, batchSize=1, fixedSeed=True)
+LS.run()
+LS_result = LS.getResults()
+LS_Probability = LS_result['Pf_MarginalEvent']
+LS_CoV = LS_result['CoV']
+
+print("LS Probability = ", LS_Probability[-1])
+print("LS CoV = ", LS_CoV[-1])
+print("Number of line searches = ", len(LS_Probability))
