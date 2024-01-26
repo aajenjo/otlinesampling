@@ -9,6 +9,9 @@ Created on Fri Jan  5 11:01:15 2024
 import openturns as ot
 import math
 import matplotlib.pyplot as plt
+import sys
+sys.path.append("/home/c65779/Documents/Projet_VIGIE/otlinesampling/otlinesampling")
+
 from LineSampling import LineSampling
 
 ################## 2 branch function #######################   

@@ -8,6 +8,8 @@ Created on Fri Jan  5 11:01:15 2024
 
 import openturns as ot
 from openturns.usecases import stressed_beam
+import sys
+sys.path.append("/home/c65779/Documents/Projet_VIGIE/otlinesampling/otlinesampling")
 from LineSampling import LineSampling
 
 
@@ -30,7 +32,7 @@ alpha=resultFORM.getStandardSpaceDesignPoint()
 standardSpaceDesignPoint = resultFORM.getStandardSpaceDesignPoint()
 dimension = myDistribution.getDimension()
 myImportance = ot.Normal(dimension)
-myImportance.setMean(standardSpaceDesignPoint)
+myImportance.setMu(standardSpaceDesignPoint)
 experiment = ot.ImportanceSamplingExperiment(myImportance)
 standardEvent = ot.StandardEvent(myEvent)
 algo = ot.ProbabilitySimulationAlgorithm(standardEvent, experiment)
