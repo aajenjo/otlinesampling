@@ -72,7 +72,7 @@ LS_twoBranch_oneDirection = LineSampling(event_twoBranch,alpha_twoBranch, rootSo
                                          oppositeDirection = False, activeLS = True, minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_twoBranch_oneDirection.run()
 LS_result = LS_twoBranch_oneDirection.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 print("LS_twoBranch_oneDirection Probability = ", LS_Probability[-1])
 print("LS_twoBranch_oneDirection CoV = ", LS_CoV[-1])
@@ -82,25 +82,25 @@ LS_twoBranch_twoDirections = LineSampling(event_twoBranch,alpha_twoBranch, rootS
                                           oppositeDirection = True, activeLS = True, minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_twoBranch_twoDirections.run()
 LS_result = LS_twoBranch_twoDirections.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 print("LS_twoBranch_twoDirection Probability = ", LS_Probability[-1])
 print("LS_twoBranch_twoDirection CoV = ", LS_CoV[-1])
 
 ##### Line Sampling union ####################################
 LS_union = LineSampling(unionEvent,alpha_twoBranch, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5)),
-                        oppositeDirection = True, activeLS = True, minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
+                        oppositeDirection = True, activeLS = False, minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_union.run()
 LS_result = LS_union.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 print("LS_unionEvent Probability = ", LS_Probability[-1])
-print("LS_unionEvent CoV = ", LS_CoV)
+print("LS_unionEvent CoV = ", LS_CoV[-1])
 
-x1 = [i[0][0][0] for i in LS_result["rootPoints"]]
-x2 = [i[1][0][0] for i in LS_result["rootPoints"]]
-y1 = [i[0][0][1] for i in LS_result["rootPoints"]]
-y2 = [i[1][0][1] for i in LS_result["rootPoints"]]
+x1 = [i[0][0] for i in LS_result["rootPoints"]]
+x2 = [i[1][0] for i in LS_result["rootPoints"]]
+y1 = [i[0][1] for i in LS_result["rootPoints"]]
+y2 = [i[1][1] for i in LS_result["rootPoints"]]
 plt.rcParams.update({"text.usetex": True,"font.family": "sans-serif","font.sans-serif": ["Helvetica"],'font.size': 22})
 plt.figure(figsize=(8,8))
 plt.grid()

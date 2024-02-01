@@ -58,7 +58,7 @@ LS = LineSampling(event,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,
              minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS.run()
 LS_result = LS.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS_default Probability = ", LS_Probability[-1])
@@ -70,7 +70,7 @@ LS.setMinCov(0.01)
 LS.setMaximumLines(5000)
 LS.run(reset=False)
 LS_result = LS.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS_newCoV Probability = ", LS_Probability[-1])
@@ -84,7 +84,7 @@ LS_noUpdate = LineSampling(event,alpha_nonOptimal, rootSolver=ot.MediumSafe(ot.B
               minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_noUpdate.run()
 LS_result = LS_noUpdate.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS_noUpdate Probability = ", LS_Probability[-1])
@@ -97,7 +97,7 @@ LS_Update = LineSampling(event,alpha_nonOptimal, rootSolver=ot.MediumSafe(ot.Bre
               minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_Update.run()
 LS_result = LS_Update.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS_Update Probability = ", LS_Probability[-1])
@@ -110,7 +110,7 @@ LS_fast = LineSampling(event,alpha, rootSolver=ot.RiskyAndFast(ot.Brent(1e-3,1e-
               minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_fast.run()
 LS_result = LS_fast.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS_RiskyAndFast Probability = ", LS_Probability[-1])
@@ -124,7 +124,7 @@ LS_slow = LineSampling(event,alpha, rootSolver=ot.SafeAndSlow(ot.Brent(1e-3,1e-3
               minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
 LS_slow.run()
 LS_result = LS_slow.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS_SafeAndSlow Probability = ", LS_Probability[-1])

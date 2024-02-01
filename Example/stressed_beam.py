@@ -50,7 +50,7 @@ LS = LineSampling(myEvent,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-
              minCoV = 0.01, maxLines=1000, batchSize=1, fixedSeed=True)
 LS.run()
 LS_result = LS.getResults()
-LS_Probability = LS_result['Pf_MarginalEvent']
+LS_Probability = LS_result['Pf']
 LS_CoV = LS_result['CoV']
 
 print("LS Probability = ", LS_Probability[-1])

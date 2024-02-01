@@ -28,6 +28,9 @@ class LineSampling():
     >>> 
     >>> 
     >>> 
+    newEvent = unionEvent.asComposedEvent()
+
+    func=newEvent.getFunction()
     """
     def __init__(
             self,
@@ -42,19 +45,19 @@ class LineSampling():
             fixedSeed=True,
     ):
         self._isIntersection = True
-        self._eventCollection = self._checkEvent(event)
-        self._dim = self._eventCollection[0].getAntecedent().getDimension()
+        self._event = self._checkEvent(event)
+        self._dim = self._event.getAntecedent().getDimension()
         self._alpha = self._checkAlpha(alpha)
         self._rootSolver = self._checkSolver(rootSolver)
         self._activeLS = self._checkActiveLS(activeLS)
         self._oppositeDirection = self._checkOppositeDirection(oppositeDirection)
         self._minCoV = self._checkMinCoV(minCoV)
         self._maximumLines = self._checkMaxLines(maxLines)
-        self._standardFunctions = self._getFunctionInStandardSpace()
+        self._standardFunction = self._getFunctionInStandardSpace()
         self._roots = []
         self._missedRoots = []
         self._pf = []
-        self._thresholds = [i.getThreshold() for i in self._eventCollection]
+        # self._thresholds = [i.getThreshold() for i in self._eventCollection]
         self._totalFunctionCalls = []
         self._CoV = [1000]
         self._batchSize = batchSize
@@ -64,60 +67,6 @@ class LineSampling():
         self._linePf = []
         self._rootPoints = []
         
-
-    def _checkDomainEvent(self,domainEvent):
-        """
-        Checks the validity of the given event for the OpenTURNS classes DomainEvent and ThresholdEvent.
-
-        Parameters
-        ----------
-        domainEvent : OpenTURNS class DomainEvent
-            The associated domain must either be a ThresholdEvent or a LevelSet.
-
-        Returns
-        -------
-        thresholdEvent : Openturns class ThresholdEvent
-        """
-        # Useful from OT 1.21 onwards with DomainEvents
-        # With 1.20, only ThresholdEvent-based events can be used.
-        # try:
-        #     domainEvent.getImplementation()
-        # except AttributeError:
-        #     pass
-        event_repr = repr(domainEvent).split(' ')[0]+repr(domainEvent).split(' ')[1]
-        if "ThresholdEvent" in event_repr:
-            return deepcopy(domainEvent)
-        elif "DomainEvent" in event_repr:
-            representation = repr(domainEvent.getDomain()).split(' ')[0]
-            print(representation)
-            if representation != "class=LevelSet":
-                raise TypeError("Domain not LevelSet, but " + representation)
-            thresholdEvent = ot.ThresholdEvent(domainEvent.getAntecedent(),
-                                               domainEvent.getDomain().getOperator(),
-                                               domainEvent.getDomain().getLevel())
-            return thresholdEvent
-        else:
-            raise TypeError("Wrong event: " + str(event_repr))
-
-    def _checkUnionIntersectionEvent(self, system_event):
-        """
-        Checks the validity of the given event for the OpenTURNS classes UnionEvent and IntersectionEvent.
-
-        Parameters
-        ----------
-        system_event : OpenTURNS class UnionEvent or IntersectionEvent
-            The system event cannot be a mixture of union and intersection of events.
-
-        Returns
-        -------
-        new_collection : list of each Openturns class ThresholdEvent that constitutes the system event
-        """
-        collection = system_event.getEventCollection()
-        new_collection = []
-        for event in collection:
-            new_collection.append(self._checkDomainEvent(event))
-        return new_collection
-            
     
     def _checkEvent(self,event):
         """
@@ -130,17 +79,35 @@ class LineSampling():
         Returns
         -------
         new_collection : individual ThresholdEvent or list of ThresholdEvent
+        CHECKER ASCOMPOSEDEVENT SI CA MARCHE OU PAS
         """
         msg = "Wrong event type"
         class_name = event.getClassName()
         if class_name not in ['ThresholdEvent','DomainEvent','UnionEvent','IntersectionEvent']:
             raise TypeError(msg)
-        if class_name in ['ThresholdEvent','DomainEvent']:
-            return [self._checkDomainEvent(event)]
+        elif class_name == 'ThresholdEvent':
+            newEvent = ot.IntersectionEvent([event]*2).asComposedEvent()
+            return newEvent
+        elif class_name == 'DomainEvent':
+            representation = repr(event.getDomain()).split(' ')[0]
+            if representation != "class=LevelSet":
+                raise TypeError("Domain not LevelSet, but " + representation)
+            else:
+                try:
+                    event_inter = ot.ThresholdEvent(event.getAntecedent(),
+                                                       event.getDomain().getOperator(),
+                                                       event.getDomain().getLevel())
+                    newEvent = ot.IntersectionEvent([event_inter]*2)
+                    return newEvent
+                except:
+                    raise TypeError(msg)
         else:
-            if class_name == 'UnionEvent':
-                self._isIntersection = False
-            return self._checkUnionIntersectionEvent(event)
+            try:
+                newEvent = event.asComposedEvent()
+                return newEvent
+            except:
+                raise TypeError(msg)
+
         
     def _checkAlpha(self,alpha):
         """
@@ -250,17 +217,15 @@ class LineSampling():
         
     def _getFunctionInStandardSpace(self):
         """Returns a list of functions in the standard space."""
-        standard_functions = []
-        for i in self._eventCollection:
-            function = i.getFunction()
-            tr_iso_inv = i.getAntecedent().getDistribution().getInverseIsoProbabilisticTransformation()
-            standard_functions.append(ot.ComposedFunction(function, tr_iso_inv))
-        return standard_functions
+        function = self._event.getFunction()
+        tr_iso_inv = self._event.getAntecedent().getDistribution().getInverseIsoProbabilisticTransformation()
+        standard_function = ot.ComposedFunction(function, tr_iso_inv)
+        return standard_function
         
     def _evaluate_line_function(self, c):
         """Compute the function along a specific line."""
         inputs = [self._currentLine[i]+self._sign*c[0]*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]
-        res = self._currentStandFunction(tuple([i for i in inputs]))
+        res = self._standardFunction(tuple([i for i in inputs]))
         return res
     
     def getSolver(self):
@@ -308,7 +273,7 @@ class LineSampling():
     def setOppositeDirection(self,oppositeDirection):
         self._oppositeDirection = self._checkOppositeDirection(oppositeDirection)
         
-    def _evaluatePf(self,roots,event):
+    def _evaluatePf(self,roots):
         if None in roots or len(roots) == 0:
             Pf = 0.
         else:
@@ -342,23 +307,22 @@ class LineSampling():
         return Pf
     
         
-    def _find_roots(self,line_sample,index):
+    def _find_roots(self,line_sample):
         """Compute the roots along a specific line. Maybe compute proba at the same time."""
         # rootStrat = ot.RootStrategy(self._rootStrategy)
         self._currentLine = line_sample
-        self._currentStandFunction = self._standardFunctions[index]
         missedRoot = False
         self._sign = 1.
         pythonFunc = ot.PythonFunction(1,1,self._evaluate_line_function)
         pythonFunc = ot.MemoizeFunction(pythonFunc)
         try:
-            roots = list(self._rootSolver.solve(pythonFunc,self._thresholds[index]))
+            roots = list(self._rootSolver.solve(pythonFunc,0))
             functionCalls = len(pythonFunc.getInputHistory())
             if self._oppositeDirection:
                 self._sign = -1.
                 pythonFunc_opp = ot.PythonFunction(1,1,self._evaluate_line_function)
                 pythonFunc_opp = ot.MemoizeFunction(pythonFunc_opp)
-                roots_opposite = list(self._rootSolver.solve(pythonFunc_opp,self._thresholds[index]))
+                roots_opposite = list(self._rootSolver.solve(pythonFunc_opp,0))
                 roots_opposite = [-i for i in roots_opposite]
                 roots+=roots_opposite
                 functionCalls += len(pythonFunc_opp.getInputHistory())
@@ -400,27 +364,23 @@ class LineSampling():
             self._totalFunctionCalls = []
             self._alpha = self._alpha[:1]
         while self._solvedLines < self._maximumLines and self._CoV[-1] > self._minCoV:
-            res = [self._find_roots(lines[self._solvedLines],i) for i in range(len(self._eventCollection))]
-            self._roots.append([i[0] for i in res])
-            self._rootPoints.append([i[-1] for i in res])
-            self._totalFunctionCalls.append([i[1] for i in res])
-            self._missedRoots.append([i[2] for i in res])
+            res = self._find_roots(lines[self._solvedLines])
+            self._roots.append(res[0])
+            self._rootPoints.append(res[-1])
+            self._totalFunctionCalls.append(res[1])
+            self._missedRoots.append(res[2])
             self._solvedLines += self._batchSize
-            self._linePf.append([self._evaluatePf(list(self._roots[-1][i]),self._eventCollection[i]) for i in range(len(self._eventCollection))])
-            self._pf.append([np.mean(np.array(self._linePf)[:,i]) for i in range(len(self._eventCollection))])
-            if len(self._eventCollection) == 1 and self._pf[-1][0]>0:
+            self._linePf.append(self._evaluatePf(list(self._roots[-1])))
+            self._pf.append(np.mean(np.array(self._linePf)))
+            if self._pf[-1]>0:
                 if len(self._pf) > 1:
-                    Var = 1 / (len(self._pf)*(len(self._pf)-1)) * sum([(i[0]-self._pf[-1][0])**2 for i in self._linePf])
+                    Var = 1 / (len(self._pf)*(len(self._pf)-1)) * sum([(i-self._pf[-1])**2 for i in self._linePf])
                     self._CoV.append(np.sqrt(Var)/self._pf[-1])
             if length_alpha < len(self._alpha):
                 lines = self._sampleLines(self._maximumLines)
                 length_alpha = len(self._alpha)
         
     def getResults(self):
-        if len(self._eventCollection) == 1:
-            dico = {'Pf_MarginalEvent': self._pf, 'CoV': self._CoV, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'rootPoints': self._rootPoints, 'missedRoots': self._missedRoots}
-        else:
-            print("WARNING: each given failure probability is linked to its corresponding marginal event, it does not correspond to the failure probability of the system event.")
-            dico = {'Pf_MarginalEvent': self._pf, 'CoV': None, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'rootPoints': self._rootPoints, 'missedRoots': self._missedRoots}
+        dico = {'Pf': self._pf, 'CoV': self._CoV, 'roots': self._roots, 'Pf_line': self._linePf, 'alpha': self._alpha, 'lineFunctionCalls': self._totalFunctionCalls, 'rootPoints': self._rootPoints, 'missedRoots': self._missedRoots}
         return dico
     
