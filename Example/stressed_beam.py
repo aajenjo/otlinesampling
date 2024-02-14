@@ -9,11 +9,13 @@ Created on Fri Jan  5 11:01:15 2024
 import openturns as ot
 from openturns.usecases import stressed_beam
 import sys
+import numpy as np
 sys.path.append("/home/c65779/Documents/Projet_VIGIE/otlinesampling/otlinesampling")
 from LineSampling import LineSampling
 
 
 ################## stressed_beam MC #######################   
+threshold = -1000000    #### to change the magnitude of Pf
 
 sm = stressed_beam.AxialStressedBeam()
 limitStateFunction = sm.model
@@ -22,12 +24,19 @@ F_dist = sm.distribution_F
 myDistribution = sm.distribution
 inputRandomVector = ot.RandomVector(myDistribution)
 outputRandomVector = ot.CompositeRandomVector(limitStateFunction, inputRandomVector)
-myEvent = ot.ThresholdEvent(outputRandomVector, ot.Less(), -0)
+myEvent = ot.ThresholdEvent(outputRandomVector, ot.Less(), threshold)
+
+D = 0.02
+G = R_dist - F_dist / (D**2 / 4 * np.pi)
+print("Exact Probability = ", G.computeCDF(threshold))
+
+
+#### FORM analysis ####
 myCobyla = ot.Cobyla()
 algoFORM = ot.FORM(myCobyla, myEvent, myDistribution.getMean())
 algoFORM.run()
 resultFORM = algoFORM.getResult()
-alpha=resultFORM.getStandardSpaceDesignPoint()
+alpha = resultFORM.getStandardSpaceDesignPoint()
 
 standardSpaceDesignPoint = resultFORM.getStandardSpaceDesignPoint()
 dimension = myDistribution.getDimension()
