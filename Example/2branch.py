@@ -60,7 +60,7 @@ unionEvent = ot.UnionEvent([event1,event2])
 ##### MC reference ################
 experiment = ot.MonteCarloExperiment()
 algo = ot.ProbabilitySimulationAlgorithm(event_twoBranch, experiment)
-algo.setMaximumOuterSampling(1000000)
+algo.setMaximumOuterSampling(100000)
 algo.setBlockSize(10)
 algo.setMaximumCoefficientOfVariation(0.01)
 algo.run()

@@ -17,8 +17,6 @@ class LineSampling():
     Parameters
     ----------
     event : ot.ThresholdEvent or ot.DomainEvent or ot.UniondEvent or ot.IntersectionEvent
-        Input dataset to be plotted. Must be a pandas DataFrame object.
-        A preprocessing removing every missing data is applied.
 
     Example
     --------
@@ -42,7 +40,6 @@ class LineSampling():
             minCoV = 0.05,
             maxLines=1000,
             batchSize=1,
-            fixedSeed=True,
     ):
         self._isIntersection = True
         self._event = self._checkEvent(event)
@@ -61,8 +58,6 @@ class LineSampling():
         self._totalFunctionCalls = []
         self._CoV = [1000]
         self._batchSize = batchSize
-        self._fixedSeed = fixedSeed
-        self._seed = self.setSeed()
         self._solvedLines = 0
         self._linePf = []
         self._rootPoints = []
@@ -78,29 +73,35 @@ class LineSampling():
 
         Returns
         -------
-        new_collection : individual ThresholdEvent or list of ThresholdEvent
-        CHECKER ASCOMPOSEDEVENT SI CA MARCHE OU PAS
+        composed_event : ThresholdEvent with composite limit state function
         """
         msg = "Wrong event type"
         class_name = event.getClassName()
         if class_name not in ['ThresholdEvent','DomainEvent','UnionEvent','IntersectionEvent']:
             raise TypeError(msg)
         elif class_name == 'ThresholdEvent':
-            newEvent = ot.IntersectionEvent([event]*2).asComposedEvent()
+            newEvent = ot.IntersectionEvent([event]*2).asComposedEvent() # *2 necessary to get it to work
             return newEvent
         elif class_name == 'DomainEvent':
-            representation = repr(event.getDomain()).split(' ')[0]
-            if representation != "class=LevelSet":
-                raise TypeError("Domain not LevelSet, but " + representation)
-            else:
-                try:
-                    event_inter = ot.ThresholdEvent(event.getAntecedent(),
-                                                       event.getDomain().getOperator(),
-                                                       event.getDomain().getLevel())
-                    newEvent = ot.IntersectionEvent([event_inter]*2)
-                    return newEvent
-                except:
-                    raise TypeError(msg)
+            try:
+                newEvent = ot.IntersectionEvent([event]*2).asComposedEvent() # *2 necessary to get it to work
+                return newEvent
+            except RuntimeError:
+                domain = event.getDomain().getImplementation()
+                raise TypeError(msg + " Domain of type " + str(type(domain)))   
+        # elif class_name == 'DomainEvent':
+        #     representation = repr(event.getDomain()).split(' ')[0]
+        #     if representation != "class=LevelSet":
+        #         raise TypeError("Domain not LevelSet, but " + representation)
+        #     else:
+        #         try:
+        #             event_inter = ot.ThresholdEvent(event.getAntecedent(),
+        #                                                event.getDomain().getOperator(),
+        #                                                event.getDomain().getLevel())
+        #             newEvent = ot.IntersectionEvent([event_inter]*2)
+        #             return newEvent
+        #         except:
+        #             raise TypeError(msg)
         else:
             try:
                 newEvent = event.asComposedEvent()
@@ -126,7 +127,8 @@ class LineSampling():
             raise ValueError("The dimension of alpha should be " +str(self._dim))
         else:
             normalized_alpha = alpha/np.linalg.norm(alpha)
-            return [normalized_alpha]
+            # return [normalized_alpha]
+            return [np.array(normalized_alpha)]
         
     def _checkSolver(self,rootSolver):
         """
@@ -216,16 +218,18 @@ class LineSampling():
             return maxLines
         
     def _getFunctionInStandardSpace(self):
-        """Returns a list of functions in the standard space."""
+        """Returns a function in the standard space."""
         function = self._event.getFunction()
         tr_iso_inv = self._event.getAntecedent().getDistribution().getInverseIsoProbabilisticTransformation()
         standard_function = ot.ComposedFunction(function, tr_iso_inv)
         return standard_function
         
     def _evaluate_line_function(self, c):
-        """Compute the function along a specific line."""
+        """Compute the function along a specific line. c is a list of one float"""
         inputs = [self._currentLine[i]+self._sign*c[0]*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]
+        # inputs = self._currentLine + self._sign * c[0] * self._alpha[-1]
         res = self._standardFunction(tuple([i for i in inputs]))
+        # res = self._standardFunction(inputs)
         return res
     
     def getSolver(self):
@@ -234,22 +238,18 @@ class LineSampling():
     def setSolver(self,rootSolver):
         self._rootSolver = self._checkSolver(rootSolver)
             
-    def setSeed(self,seed=1234):
-        if type(seed) is not int or seed <= 0:
-            raise ValueError("seed should be a positive integer")
-        else:
-            self._fixedSeed = True
-            return seed
-            
+
 
     def _sampleLines(self,N):
         """Sample the lines."""
-        if self._fixedSeed:
-            ot.RandomGenerator.SetSeed(self._seed)
-        U = ot.Normal(self._dim).getSample(N)
-        U_prod_scalaire = [sum([i[j]*self._alpha[-1][j] for j in range(len(self._alpha[-1]))]) for i in U]
-        U_alpha = [[i*self._alpha[-1][j] for j in range(self._dim)] for i in U_prod_scalaire]
-        U_alpha_ortho = [[U[i][j]-U_alpha[i][j] for j in range(self._dim)] for i in range(len(U))]
+        # U = ot.Normal(self._dim).getSample(N)
+        U = np.array(ot.Normal(self._dim).getSample(N))
+        # U_prod_scalaire = [sum([i[j]*self._alpha[-1][j] for j in range(len(self._alpha[-1]))]) for i in U]
+        U_prod_scalaire = np.inner(U, self._alpha[-1]) # produit scalaire de chaque point de U avec le dernier vecteur alpha
+        # U_alpha = [[i*self._alpha[-1][j] for j in range(self._dim)] for i in U_prod_scalaire]
+        U_alpha = np.outer(U_prod_scalaire, self._alpha[-1]) # matrice dont chaque ligne est un multiple de alpha par l'un des produits scalaires calculés
+        # U_alpha_ortho = [[U[i][j]-U_alpha[i][j] for j in range(self._dim)] for i in range(len(U))]
+        U_alpha_ortho = U - U_alpha
         ''' Ordonner les points '''
         # if self._activeLS:
         #     ...
@@ -290,19 +290,19 @@ class LineSampling():
             if 0 in roots:
                 if roots != [0]*len(roots):
                     if list(roots_pos) != [0]:
-                        Pf_pos = sum([(-1)**-k*ot.Normal().computeCDF(-abs(roots_pos[k])) for k in range(len(roots_pos))])
+                        Pf_pos = sum([(-1)**-k*ot.DistFunc.pNormal(-abs(roots_pos[k])) for k in range(len(roots_pos))])
                     else:
                         Pf_pos = 1
                     if list(roots_neg) != [0]:
-                        Pf_neg = sum([(-1)**k*ot.Normal().computeCDF(-abs(roots_neg[-1-k])) for k in range(len(roots_neg))])
+                        Pf_neg = sum([(-1)**k*ot.DistFunc.pNormal(-abs(roots_neg[-1-k])) for k in range(len(roots_neg))])
                     else:
                         Pf_neg = 1
                     Pf = 1-Pf_pos+Pf_neg
                 else:
                     Pf = 1
             else:
-                Pf_pos = sum([(-1)**-k*ot.Normal().computeCDF(-abs(roots_pos[k])) for k in range(len(roots_pos))])
-                Pf_neg = sum([(-1)**k*ot.Normal().computeCDF(-abs(roots_neg[-1-k])) for k in range(len(roots_neg))])
+                Pf_pos = sum([(-1)**-k*ot.DistFunc.pNormal(-abs(roots_pos[k])) for k in range(len(roots_pos))])
+                Pf_neg = sum([(-1)**k*ot.DistFunc.pNormal(-abs(roots_neg[-1-k])) for k in range(len(roots_neg))])
                 Pf = Pf_pos+Pf_neg
         return Pf
     
@@ -310,7 +310,8 @@ class LineSampling():
     def _find_roots(self,line_sample):
         """Compute the roots along a specific line. Maybe compute proba at the same time."""
         # rootStrat = ot.RootStrategy(self._rootStrategy)
-        self._currentLine = line_sample
+        # self._currentLine = line_sample
+        self._currentLine = np.array(line_sample)
         missedRoot = False
         self._sign = 1.
         pythonFunc = ot.PythonFunction(1,1,self._evaluate_line_function)
@@ -330,7 +331,8 @@ class LineSampling():
                 uCandidate = [self._currentLine[i] + roots[0]*self._alpha[-1][i] for i in range(len(self._alpha[-1]))]
                 if np.linalg.norm(uCandidate) < np.linalg.norm(self._ustar[-1]):
                     self._ustar.append(uCandidate)
-                    self._alpha.append([i / np.linalg.norm(self._ustar[-1]) for i in self._ustar[-1]])
+                    # self._alpha.append([i / np.linalg.norm(self._ustar[-1]) for i in self._ustar[-1]])
+                    self._alpha.append(np.array([i / np.linalg.norm(self._ustar[-1]) for i in self._ustar[-1]]))
         except:
             missedRoot = True
             roots = [None]

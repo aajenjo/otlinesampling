@@ -56,7 +56,7 @@ print("IS Probability = ", probabilityFORMIS)
 
 ##### Line Sampling ####################################
 LS = LineSampling(myEvent,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = True,
-             minCoV = 0.01, maxLines=1000, batchSize=1, fixedSeed=True)
+             minCoV = 0.01, maxLines=1000, batchSize=1)
 LS.run()
 LS_result = LS.getResults()
 LS_Probability = LS_result['Pf']

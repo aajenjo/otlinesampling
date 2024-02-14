@@ -55,7 +55,7 @@ print("IS Probability = ", IS_probability)
 
 ##### Line Sampling ####################################
 LS = LineSampling(event,alpha, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = True,
-             minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
+             minCoV = 0.05, maxLines=1000, batchSize=1)
 LS.run()
 LS_result = LS.getResults()
 LS_Probability = LS_result['Pf']
@@ -81,7 +81,7 @@ print("Number of line searches = ", len(LS_Probability))
 # ##### update alpha with non optimal direction and set activeLS to False ####################################
 alpha_nonOptimal = [-0.3,0.7,0.4,-0.4]
 LS_noUpdate = LineSampling(event,alpha_nonOptimal, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = False,
-              minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
+              minCoV = 0.05, maxLines=1000, batchSize=1)
 LS_noUpdate.run()
 LS_result = LS_noUpdate.getResults()
 LS_Probability = LS_result['Pf']
@@ -94,7 +94,7 @@ print("Updated directions alpha = ", LS_result['alpha'])
 
 ###### set activeLS to True ####################
 LS_Update = LineSampling(event,alpha_nonOptimal, rootSolver=ot.MediumSafe(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = True,
-              minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
+              minCoV = 0.05, maxLines=1000, batchSize=1)
 LS_Update.run()
 LS_result = LS_Update.getResults()
 LS_Probability = LS_result['Pf']
@@ -107,7 +107,7 @@ print("Updated directions alpha = ", LS_result['alpha'])
 
 # ##### compare root solvers ####################################
 LS_fast = LineSampling(event,alpha, rootSolver=ot.RiskyAndFast(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = False,
-              minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
+              minCoV = 0.05, maxLines=1000, batchSize=1)
 LS_fast.run()
 LS_result = LS_fast.getResults()
 LS_Probability = LS_result['Pf']
@@ -121,7 +121,7 @@ print("LS_RiskyAndFast Total number of function evaluations along one line = ", 
 
 
 LS_slow = LineSampling(event,alpha, rootSolver=ot.SafeAndSlow(ot.Brent(1e-3,1e-3,1e-3,5)),oppositeDirection = False, activeLS = False,
-              minCoV = 0.05, maxLines=1000, batchSize=1, fixedSeed=True)
+              minCoV = 0.05, maxLines=1000, batchSize=1)
 LS_slow.run()
 LS_result = LS_slow.getResults()
 LS_Probability = LS_result['Pf']
