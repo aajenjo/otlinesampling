@@ -393,7 +393,7 @@ from LineSampling import LineSampling
 # %%
 
 alpha = [0.0, 0.0, 0.0, 0.0, 1.0]
-ls = LineSampling(E4, alpha, maxLines=2000)
+ls = LineSampling(E4, alpha, maxLines=2000, rootSolver=ot.SafeAndSlow(ot.Brent(1e-3,1e-3,1e-3,5),8,0.01))
 
 # %%
 ls.run()
