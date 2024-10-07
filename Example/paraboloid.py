@@ -389,6 +389,7 @@ print("Number of LSF calls = ", num_LSF_calls)
 import sys
 sys.path.append("/home/c65779/Documents/Projet_VIGIE/otlinesampling/otlinesampling")
 sys.path.append("/home/G29933/OpenTURNS/otlinesampling/otlinesampling")
+sys.path.append("/home/C39575/Documents/_Projets_/Openturns/GIT/otlinesampling/otlinesampling")
 from LineSampling import LineSampling
 
 # %%
