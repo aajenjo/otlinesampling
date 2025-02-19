@@ -15,6 +15,8 @@ from scipy.integrate import quad
 import numpy as np
 # import openturns.experimental as otexp 
 
+ot.Log.Show(ot.Log.NONE)
+
 paraboloid = ot.SymbolicFunction(['u1', 'u2', 'u3','u4','u5'], ['- u5 + u1^2 + u2^2 + u3^2 + u4^2'])
 
 b = 3.5
@@ -239,6 +241,19 @@ print("Confidence Interval (0.95) = [", FIS_pf-FIS_results.getConfidenceLength()
 print("Number of LSF calls = ", num_LSF_calls)
 print()
 
+# post analytical controlled IS
+
+algo = ot.PostAnalyticalControlledImportanceSampling(FORM_result)
+
+algo.run()
+
+result = algo.getResult()
+
+pf = result.getProbabilityEstimate()
+
+print('post analytical controlled IS failure probability (E1)= ', pf)
+print('')
+
 # ### Subset sampling
 
 # %%
@@ -277,8 +292,12 @@ view = viewer.View(graph)
 # Root finding algorithm.
 
 # %%
-solver = ot.Brent()
-rootStrategy = ot.SafeAndSlow(solver)
+# solver = ot.Brent()
+# rootStrategy = ot.SafeAndSlow(solver)
+pas = db/1.02
+rmax = 6
+rootStrategy =ot.SafeAndSlow(ot.Brent(1e-3,1e-3,1e-3,20),rmax,pas)
+# rootStrategy =ot.MediumSafe(ot.Brent(1e-4,1e-4,1e-4,20),rmax,pas)
 
 # %%
 # Direction sampling algorithm.
@@ -286,7 +305,7 @@ rootStrategy = ot.SafeAndSlow(solver)
 # directional sampling should also perform better.
 
 # %%
-samplingStrategy = ot.OrthogonalDirection()
+samplingStrategy = ot.RandomDirection()
 
 # %%
 # Create a simulation algorithm.
@@ -294,7 +313,7 @@ samplingStrategy = ot.OrthogonalDirection()
 # %%
 algo = ot.DirectionalSampling(E4, rootStrategy, samplingStrategy)
 algo.setMaximumCoefficientOfVariation(cv)
-algo.setMaximumOuterSampling(50000)
+algo.setMaximumOuterSampling(200000)
 algo.setConvergenceStrategy(ot.Full())
 in_num_LSF_calls = paraboloid.getEvaluationCallsNumber()
 
@@ -321,12 +340,46 @@ graph = algo.drawProbabilityConvergence()
 graph.setLogScale(ot.GraphImplementation.LOGX)
 view = viewer.View(graph)
 
+# Adaptive Directional Sampling
+algo = ot.AdaptiveDirectionalStratification(E4, rootStrategy, samplingStrategy)
+algo.setMaximumCoefficientOfVariation(cv)
+algo.setMaximumOuterSampling(200000)
+algo.setConvergenceStrategy(ot.Full())
+in_num_LSF_calls = paraboloid.getEvaluationCallsNumber()
+
+# Perform the simulation
+algo.run()
+
+num_LSF_calls = paraboloid.getEvaluationCallsNumber() - in_num_LSF_calls
+# %%
+# Retrieve results.
+
+# %%
+result = algo.getResult()
+Pf = result.getProbabilityEstimate()
+print()
+print("ADS")
+print("Adaptive Directional Simulation - Pf = ", Pf)
+print('DS Accuracy (CV) : ', result.getCoefficientOfVariation())
+print("Confidence Interval (0.95) = [", Pf -result.getConfidenceLength()/2,", ", Pf + result.getConfidenceLength()/2,"]")
+print("Number of LSF calls = ", num_LSF_calls)
+
+print(result)
+print("Iterations=", result.getOuterSampling())
+
+
+
 # %%
 # Evaluate the probability with the NAIS technique
 # ------------------------------------------------
 
 # %%
-quantileLevel = 0.1
+# Evaluate the probability with the NAIS technique
+# ------------------------------------------------
+
+# %%
+quantileLevel = 0.02
+# ot.RandomGenerator.SetSeed(0)
 algo = ot.NAIS(E4.asComposedEvent(), quantileLevel) # asComposedEvent() necessary due to issue #2773
 
 # %%
@@ -335,7 +388,7 @@ algo = ot.NAIS(E4.asComposedEvent(), quantileLevel) # asComposedEvent() necessar
 # %%
 # algo.setKeepSample(True)
 algo.setMaximumCoefficientOfVariation(cv)
-algo.setMaximumOuterSampling(50)
+algo.setMaximumOuterSampling(10000)
 in_num_LSF_calls = paraboloid.getEvaluationCallsNumber()
 
 # We are forced to set a low maximum outer sampling size because NAIS is unable
@@ -353,23 +406,23 @@ print()
 print("Proba NAIS = ", proba)
 print("Current coefficient of variation = ", result.getCoefficientOfVariation())
 print("Number of LSF calls = ", num_LSF_calls)
-
-# %%
+print()
 
 # -------------------------------------------  IS cross entropy ---------------
-standardSpaceIS = otexp.StandardSpaceCrossEntropyImportanceSampling(E4.asComposedEvent(), 0.35) # asComposedEvent() necessary due to issue #2773
+standardSpaceIS = otexp.StandardSpaceCrossEntropyImportanceSampling(E4.asComposedEvent(), 0.02) # asComposedEvent() necessary due to issue #2773
 
 # %%
 # The sample size at each iteration can be changed by the following accessor:
 
 # %%
-standardSpaceIS.setMaximumOuterSampling(200)
+standardSpaceIS.setMaximumOuterSampling(10000)
 standardSpaceIS.setMaximumCoefficientOfVariation(cv)
 in_num_LSF_calls = paraboloid.getEvaluationCallsNumber()
 # %%
 # Now we can run the algorithm and get the results.
 
 # %%
+# ot.RandomGenerator.SetSeed(0)
 standardSpaceIS.run()
 num_LSF_calls = paraboloid.getEvaluationCallsNumber() - in_num_LSF_calls
 standardSpaceISResult = standardSpaceIS.getResult()
@@ -381,15 +434,13 @@ print(
 )
 print("Number of LSF calls = ", num_LSF_calls)
 
-# This does not work !
+print()
 
 # %%
 
 # Line Sampling
 import sys
 sys.path.append("/home/c65779/Documents/Projet_VIGIE/otlinesampling/otlinesampling")
-sys.path.append("/home/G29933/OpenTURNS/otlinesampling/otlinesampling")
-sys.path.append("/home/C39575/Documents/_Projets_/Openturns/GIT/otlinesampling/otlinesampling")
 from LineSampling import LineSampling
 
 # %%
@@ -404,4 +455,4 @@ ls.run()
 
 res = ls.getResults()
 Pf = res['Pf']
-print(Pf[-1])
+print("Proba Line Sampling:",Pf[-1])
